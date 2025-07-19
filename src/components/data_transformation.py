@@ -8,6 +8,8 @@ from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import StandardScaler, OneHotEncoder
+from scipy.sparse import spmatrix
+
 from src.exception import CustomException
 from src.logger import logging
 from src.utils import save_object
@@ -22,11 +24,14 @@ class DataTransformation:
 
     def get_data_transformer_object(self, df: pd.DataFrame) -> ColumnTransformer:
         try:
-            numerical_columns = ["bedrooms", "bathrooms", "livingArea", "price", "rentZestimate", "annual_rent_income", "timeOnZillowHours"]
+            numerical_columns = [
+                "bedrooms", "bathrooms", "livingArea", "price", "rentZestimate",
+                "pageViewCount", "favoriteCount", "propertyTaxRate",
+                "timeOnZillow", "yearBuilt"
+            ]
             categorical_columns = []
 
-            # Dynamically detect categorical columns
-            for col in ["homeStatus", "homeType", "city", "zipcode"]:
+            for col in ["homeStatus", "homeType", "city", "zipcode", "state"]:
                 if col in df.columns:
                     categorical_columns.append(col)
 
@@ -55,17 +60,40 @@ class DataTransformation:
 
     def initiate_data_transformation(self, train_path: str, test_path: str):
         try:
-            # Load datasets
             train_df = pd.read_csv(train_path)
             test_df = pd.read_csv(test_path)
-            logging.info("Loaded train and test data for transformation")
+            logging.info("✅ Loaded train and test data for transformation")
 
-            # Ensure consistent preprocessing logic
+            drop_cols = ["zpid", "url", "lastUpdated", "streetAddress", "dateSold",
+                         "datePosted", "livingAreaUnits", "county"]
+            train_df.drop(columns=[col for col in drop_cols if col in train_df.columns], inplace=True, errors='ignore')
+            test_df.drop(columns=[col for col in drop_cols if col in test_df.columns], inplace=True, errors='ignore')
+
+            def convert_time(value):
+                if pd.isna(value):
+                    return np.nan
+                value = str(value).strip().lower()
+                try:
+                    num = int(value.split()[0])
+                    if "day" in value:
+                        return num * 24
+                    elif "hour" in value:
+                        return num
+                except:
+                    return np.nan
+                return np.nan
+
+            for df in [train_df, test_df]:
+                if "timeOnZillow" in df.columns:
+                    df["timeOnZillow"] = df["timeOnZillow"].apply(convert_time)
+
             for df in [train_df, test_df]:
                 df["annual_rent_income"] = df["rentZestimate"] * 12
                 df["roi"] = (df["annual_rent_income"] / df["price"]) * 100
                 df["roi"] = df["roi"].replace([np.inf, -np.inf], np.nan)
-                df.dropna(subset=["roi", "bedrooms", "bathrooms", "livingArea", "price", "rentZestimate"], inplace=True)
+                df.dropna(subset=[
+                    "roi", "bedrooms", "bathrooms", "livingArea", "price", "rentZestimate"
+                ], inplace=True)
 
             target_column = "roi"
 
@@ -75,17 +103,23 @@ class DataTransformation:
             input_feature_test_df = test_df.drop(columns=[target_column])
             target_feature_test_df = test_df[target_column]
 
-            # Get the preprocessing pipeline
             preprocessing_obj = self.get_data_transformer_object(train_df)
 
-            # Transform data
             input_feature_train_arr = preprocessing_obj.fit_transform(input_feature_train_df)
             input_feature_test_arr = preprocessing_obj.transform(input_feature_test_df)
+
+            if isinstance(input_feature_train_arr, spmatrix):
+                input_feature_train_arr = input_feature_train_arr.toarray()
+            if isinstance(input_feature_test_arr, spmatrix):
+                input_feature_test_arr = input_feature_test_arr.toarray()
+
+            logging.info("📦 Feature array shapes:")
+            logging.info(f"Train features: {input_feature_train_arr.shape}")
+            logging.info(f"Train target: {target_feature_train_df.shape}")
 
             train_arr = np.c_[input_feature_train_arr, target_feature_train_df.to_numpy()]
             test_arr = np.c_[input_feature_test_arr, target_feature_test_df.to_numpy()]
 
-            logging.info("Saving preprocessor object to disk")
             save_object(
                 file_path=self.data_transformation_config.preprocessor_obj_file_path,
                 obj=preprocessing_obj

@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>ROI Predictor</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            background-color: #f2f2f2;
+        }
+
+        h1 {
+            color: #333;
+        }
+
+        form {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            max-width: 600px;
+            margin: auto;
+        }
+
+        label {
+            display: block;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+
+        input, select {
+            width: 100%;
+            padding: 8px;
+            margin-top: 5px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+        }
+
+        .submit-btn {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            width: 100%;
+        }
+
+        .result, .error {
+            text-align: center;
+            margin-top: 20px;
+        }
+
+        .result {
+            color: green;
+            font-size: 24px;
+        }
+
+        .error {
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <h1 align="center">Real Estate ROI Predictor</h1>
+
+    <form method="post">
+        <label>Bedrooms:</label>
+        <input type="number" name="bedrooms" value="3" step="0.1" required>
+
+        <label>Bathrooms:</label>
+        <input type="number" name="bathrooms" value="2" step="0.1" required>
+
+        <label>Living Area (sq ft):</label>
+        <input type="number" name="livingArea" value="1200" step="1" required>
+
+        <label>Price ($):</label>
+        <input type="number" name="price" value="250000" step="1000" required>
+
+        <label>Rent Estimate ($):</label>
+        <input type="number" name="rentZestimate" value="1500" step="50" required>
+
+        <label>Time on Zillow (in hours):</label>
+        <input type="number" name="timeOnZillow" value="48">
+
+        <label>Year Built:</label>
+        <input type="number" name="yearBuilt" value="2005">
+
+        <label>Home Status:</label>
+        <select name="homeStatus">
+            <option>FOR_SALE</option>
+            <option>RECENTLY_SOLD</option>
+        </select>
+
+        <label>Home Type:</label>
+        <select name="homeType">
+            <option>Single Family</option>
+            <option>Condo</option>
+            <option>Townhouse</option>
+            <option>Multi Family</option>
+        </select>
+
+        <label>City:</label>
+        <input type="text" name="city" value="San Jose">
+
+        <label>Zipcode:</label>
+        <input type="text" name="zipcode" value="95123">
+
+        <label>State:</label>
+        <input type="text" name="state" value="CA">
+
+        <button type="submit" class="submit-btn">Predict ROI</button>
+    </form>
+
+    {% if results is not none %}
+        <div class="result">
+            ✅ Predicted ROI: <strong>{{ results }}%</strong>
+        </div>
+    {% elif error %}
+        <div class="error">
+            ❌ Error: {{ error }}
+        </div>
+    {% endif %}
+</body>
+</html>
